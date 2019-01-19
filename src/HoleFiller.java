@@ -1,9 +1,8 @@
 import org.opencv.core.Mat;
-
-import java.util.function.Function;
+import java.util.function.ToDoubleBiFunction;
 
 public class HoleFiller {
-    HoleFiller(Function<int[], Float> weight, Mat img){
-
+    public Mat Run(ToDoubleBiFunction<int [], int[]> weightFunc, Mat img){
+        return new Mat();
     }
 }

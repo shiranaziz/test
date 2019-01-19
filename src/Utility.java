@@ -1,8 +1,5 @@
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
-
-import java.util.function.Function;
-
 import static org.opencv.core.CvType.CV_32F;
 
 public class Utility {
@@ -19,8 +16,7 @@ public class Utility {
         Mat img = Imgcodecs.imread(originalImagePath, Imgcodecs.IMREAD_GRAYSCALE);
         Mat mask = Imgcodecs.imread(maskPath, Imgcodecs.IMREAD_GRAYSCALE);
         MergeImageAndMask(img, mask);
-//        System.out.println(imgWithHole.dump());
-        HoleFiller holeFiller = new HoleFiller(Main::WeightFuncWrapper ,imgWithHole);
+        HoleFiller holeFiller = new HoleFiller(this::DefaultWeightFunc,this.imgWithHole);
     }
 
     private void MergeImageAndMask(Mat img, Mat mask){
@@ -40,12 +36,8 @@ public class Utility {
         System.out.println("running");
     }
 
-    private static Function<int[], Float> WeightFuncWrapper(int[] u, int[] v, int z, float epsilon) {
-        return Main::DefaultWeightFunc;
-    }
-
-    private static float DefaultWeightFunc(int[] u, int[] v, int z, float epsilon){
+    private Float DefaultWeightFunc(int[] u, int[] v){
         double norm = Math.sqrt(Math.pow(u[0]-v[0],2) + Math.pow(u[1]-v[1],2));
-        return (float) (1/(Math.pow(norm,z)+epsilon));
+        return (float) (1/(Math.pow(norm,this.z)+this.epsilon));
     }
 }
