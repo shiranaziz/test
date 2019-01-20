@@ -14,8 +14,8 @@ public class Main {
         float epsilon = Float.parseFloat(args[3]);
         Mat img = Imgcodecs.imread(originalImagePath, Imgcodecs.IMREAD_GRAYSCALE);
         Mat mask = Imgcodecs.imread(maskPath, Imgcodecs.IMREAD_GRAYSCALE);
-        HoleFiller holeFiller = new HoleFiller();
-        holeFiller.Run(DefaultWeightFunc(z, epsilon),MergeImageAndMask(img, mask));
+        HoleFiller holeFiller = new HoleFiller(DefaultWeightFunc(z, epsilon));
+        Mat fixedImg = holeFiller.Run(MergeImageAndMask(img, mask));
         System.out.println("Finished");
     }
 
