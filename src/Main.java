@@ -3,7 +3,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 
 import java.util.function.ToDoubleBiFunction;
 
-import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.*;
 
 public class Main {
 
@@ -12,11 +12,28 @@ public class Main {
         String maskPath = args[1];
         int z =  Integer.parseInt(args[2]);
         float epsilon = Float.parseFloat(args[3]);
+        HoleFiller.PixelConnectivity connectivity = ParseConnectivity(args[4]);
+
         Mat img = Imgcodecs.imread(originalImagePath, Imgcodecs.IMREAD_GRAYSCALE);
         Mat mask = Imgcodecs.imread(maskPath, Imgcodecs.IMREAD_GRAYSCALE);
-        HoleFiller holeFiller = new HoleFiller(DefaultWeightFunc(z, epsilon));
+
+        HoleFiller holeFiller = new HoleFiller(DefaultWeightFunc(z, epsilon), connectivity);
+
         Mat fixedImg = holeFiller.Run(MergeImageAndMask(img, mask));
         System.out.println("Finished");
+    }
+
+    private static HoleFiller.PixelConnectivity ParseConnectivity(String arg) {
+        if (arg.equals("4")){
+            return HoleFiller.PixelConnectivity.FOUR;
+        }
+        else if (arg.equals("8")){
+            return HoleFiller.PixelConnectivity.EIGHT;
+        }
+        else {
+            // TODO: throw exception
+            return null;
+        }
     }
 
     static private Mat MergeImageAndMask(Mat img, Mat mask){

@@ -4,38 +4,54 @@ import java.util.ArrayList;
 import java.util.function.ToDoubleBiFunction;
 
 class HoleFiller {
-    private ToDoubleBiFunction weightFunc;
 
-    HoleFiller(ToDoubleBiFunction<int [], int[]> weightFunc){
+    enum PixelConnectivity{
+        FOUR,
+        EIGHT
+    }
+
+    private ToDoubleBiFunction weightFunc;
+    private PixelConnectivity connectivity;
+
+    HoleFiller(ToDoubleBiFunction<int [], int[]> weightFunc, PixelConnectivity connectivity){
         this.weightFunc = weightFunc;
+        this.connectivity = connectivity;
     }
 
     Mat Run(Mat img){
         ArrayList<int[]> boundary = FindBoundary(img);
-        //TODO: foreach u in H, 
+        Mat restoredImg = new Mat();
+        img.copyTo(restoredImg);
+        for (int i=0; i<restoredImg.rows(); i++){
+            for (int j=0; j<restoredImg.cols(); j++){
+                if (restoredImg.get(i,j) [0] == -1){
+                    float recoveredPixel = RecoverPixel(new int[]{i,j},boundary,img);
+                    restoredImg.put(i,j,recoveredPixel);
+                }
+            }
+        }
         return new Mat();
     }
 
     private ArrayList<int[]> FindBoundary(Mat img){
         ArrayList<int[]> boundary = new ArrayList<>();
+        if (this.connectivity == PixelConnectivity.FOUR){
+            //something
+        }
+        else {
+            //something
+        }
         //TODO: write code...
         return boundary;
     }
     
     private float RecoverPixel(int[] pixel, ArrayList<int[]> boundary, Mat img){
-        float normalization = CalcNormalization(pixel, boundary);
+        float normalization = 0;
         float result = 0;
         for (int[] v: boundary) {
             result += this.weightFunc.applyAsDouble(pixel,v) * img.get(v[0],v[1])[0];
-        }
-        return result/normalization;
-    }
-    
-    private float CalcNormalization(int[] pixel, ArrayList<int[]> boundary){
-        float normalization = 0;
-        for (int[] v: boundary) {
             normalization += this.weightFunc.applyAsDouble(pixel,v);
         }
-        return normalization;
+        return result/normalization;
     }
 }
