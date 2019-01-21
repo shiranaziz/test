@@ -1,3 +1,4 @@
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 
@@ -8,6 +9,7 @@ import static org.opencv.core.CvType.*;
 public class Main {
 
     public static void main(String[] args) {
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         String originalImagePath = args[0];
         String maskPath = args[1];
         int z =  Integer.parseInt(args[2]);
@@ -20,9 +22,17 @@ public class Main {
         HoleFiller holeFiller = new HoleFiller(DefaultWeightFunc(z, epsilon), connectivity);
 
         Mat fixedImg = holeFiller.Run(MergeImageAndMask(img, mask));
+
+        Mat temp = new Mat();
+        fixedImg.convertTo(temp,CV_8UC1,255);
+        Imgcodecs.imwrite("fixed.png",temp);
         System.out.println("Finished");
     }
 
+    /**
+     * @param arg the type of connectivity
+     * @return
+     */
     private static HoleFiller.PixelConnectivity ParseConnectivity(String arg) {
         if (arg.equals("4")){
             return HoleFiller.PixelConnectivity.FOUR;

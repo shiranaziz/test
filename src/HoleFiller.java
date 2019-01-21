@@ -1,6 +1,7 @@
 import org.opencv.core.Mat;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.function.ToDoubleBiFunction;
 
 class HoleFiller {
@@ -30,19 +31,46 @@ class HoleFiller {
                 }
             }
         }
-        return new Mat();
+        return restoredImg;
     }
 
-    private ArrayList<int[]> FindBoundary(Mat img){
-        ArrayList<int[]> boundary = new ArrayList<>();
-        if (this.connectivity == PixelConnectivity.FOUR){
-            //something
+    private ArrayList<int[]> FindBoundary(Mat img) {
+        HashSet<int[]> boundary = new HashSet<>();
+        for (int i = 0; i < img.rows(); i++) {
+            for (int j = 0; j < img.cols(); j++) {
+                if (img.get(i, j)[0] == -1) {
+                    ArrayList<int[]> connected;
+                    if (this.connectivity == PixelConnectivity.FOUR){
+                        connected = FourNeighborhood(i,j);
+                    }
+                    else {
+                        connected = EightNeighborhood(i,j);
+                    }
+                    connected.removeIf(p->img.get(p[0],p[1])[0] == -1);
+                    boundary.addAll(connected);
+                }
+            }
         }
-        else {
-            //something
-        }
-        //TODO: write code...
-        return boundary;
+        return new ArrayList<>(boundary);
+    }
+
+    private ArrayList<int[]> FourNeighborhood(int i, int j){
+        ArrayList<int[]> lst = new ArrayList<>(4);
+        lst.add(new int[]{i-1,j});
+        lst.add(new int[]{i+1,j});
+        lst.add(new int[]{i,j-1});
+        lst.add(new int[]{i,j+1});
+        return  lst;
+    }
+
+    private ArrayList<int[]> EightNeighborhood(int i, int j){
+        ArrayList<int[]> lst = new ArrayList<>(8);
+        lst.addAll(FourNeighborhood(i,j));
+        lst.add(new int[]{i-1,j-1});
+        lst.add(new int[]{i-1,j+1});
+        lst.add(new int[]{i+1,j-1});
+        lst.add(new int[]{i+1,j+1});
+        return lst;
     }
     
     private float RecoverPixel(int[] pixel, ArrayList<int[]> boundary, Mat img){
