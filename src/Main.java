@@ -21,8 +21,8 @@ public class Main {
 
         HoleFiller holeFiller = new HoleFiller(DefaultWeightFunc(z, epsilon), connectivity);
 
-        Mat fixedImg = holeFiller.Run(MergeImageAndMask(img, mask));
-
+//        Mat fixedImg = holeFiller.Run(MergeImageAndMask(img, mask));
+        Mat fixedImg = holeFiller.RunFast(MergeImageAndMask(img, mask));
         Mat temp = new Mat();
         fixedImg.convertTo(temp,CV_8UC1,255);
         Imgcodecs.imwrite("fixed.png",temp);
