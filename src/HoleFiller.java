@@ -14,22 +14,21 @@ class HoleFiller {
         EIGHT
     }
 
-    private ToDoubleBiFunction weightFunc;
-    private PixelConnectivity connectivity;
-
-    HoleFiller(ToDoubleBiFunction<int [], int[]> weightFunc, PixelConnectivity connectivity){
-        this.weightFunc = weightFunc;
-        this.connectivity = connectivity;
-    }
-
-    Mat Run(Mat img){
-        ArrayList<int[]> boundary = FindBoundary(img);
+    /**
+     * apply the exact hole filling algorithm
+     * @param img matrix representing an image with hole
+     * @param weightFunc
+     * @param connectivity pixel connectivity of the boundary
+     * @return matrix representing a restored image (filled hole)
+     */
+    static Mat Run(Mat img, ToDoubleBiFunction<int [], int[]> weightFunc, PixelConnectivity connectivity){
+        ArrayList<int[]> boundary = FindBoundary(img, connectivity);
         Mat restoredImg = new Mat();
         img.copyTo(restoredImg);
         for (int i=0; i<restoredImg.rows(); i++){
             for (int j=0; j<restoredImg.cols(); j++){
                 if (restoredImg.get(i,j) [0] == -1){
-                    float recoveredPixel = RecoverPixel(new int[]{i,j},boundary,img);
+                    float recoveredPixel = RecoverPixel(new int[]{i,j},boundary,img,weightFunc,connectivity);
                     restoredImg.put(i,j,recoveredPixel);
                 }
             }
@@ -37,7 +36,12 @@ class HoleFiller {
         return restoredImg;
     }
 
-    Mat RunFast(Mat img){
+    /**
+     * apply an approximate hole filling algorithm (faster then the exact solution)
+     * @param img matrix representing an image with hole
+     * @return matrix representing a restored image (filled hole)
+     */
+    static Mat RunFast(Mat img){
         Mat restoredImgHoriz = new Mat();
         img.copyTo(restoredImgHoriz);
         for (int i=0; i<restoredImgHoriz.rows(); i++){
@@ -65,7 +69,32 @@ class HoleFiller {
         return restoredImg;
     }
 
-    private float RecoverPixelFast(int[] pixel, Mat img) {
+    /**
+     * restore a pixel in the hole, using the exact algorithm
+     * @param pixel pixel coordinates
+     * @param boundary all boundary pixels
+     * @param img image with hole
+     * @param weightFunc
+     * @param connectivity boundary pixel connectivity
+     * @return estimated pixel value
+     */
+    private static float RecoverPixel(int[] pixel, ArrayList<int[]> boundary, Mat img, ToDoubleBiFunction<int [], int[]> weightFunc, PixelConnectivity connectivity){
+        float normalization = 0;
+        float result = 0;
+        for (int[] v: boundary) {
+            result += weightFunc.applyAsDouble(pixel,v) * img.get(v[0],v[1])[0];
+            normalization += weightFunc.applyAsDouble(pixel,v);
+        }
+        return result/normalization;
+    }
+
+    /**
+     * restore a pixel in the hole, using the approximate algorithm
+     * @param pixel pixel coordinates
+     * @param img image with hole
+     * @return estimated pixel value
+     */
+    private static float RecoverPixelFast(int[] pixel, Mat img) {
         ArrayList<int[]> connected = GetEightNeighborhood(pixel[0],pixel[1]);
         float mean = 0;
         int count = 0;
@@ -79,13 +108,19 @@ class HoleFiller {
         return mean/count;
     }
 
-    private ArrayList<int[]> FindBoundary(Mat img) {
+    /**
+     * find the boundary of the hole
+     * @param img image with hole
+     * @param connectivity pixel connectivity
+     * @return a list of boundary pixels
+     */
+    private static ArrayList<int[]> FindBoundary(Mat img, PixelConnectivity connectivity) {
         HashSet<int[]> boundary = new HashSet<>();
         for (int i = 0; i < img.rows(); i++) {
             for (int j = 0; j < img.cols(); j++) {
                 if (img.get(i, j)[0] == -1) {
                     ArrayList<int[]> connected;
-                    if (this.connectivity == PixelConnectivity.FOUR){
+                    if (connectivity == PixelConnectivity.FOUR){
                         connected = GetFourNeighborhood(i,j);
                     }
                     else {
@@ -99,7 +134,13 @@ class HoleFiller {
         return new ArrayList<>(boundary);
     }
 
-    private ArrayList<int[]> GetFourNeighborhood(int i, int j){
+    /**
+     * get the four connected pixels
+     * @param i row index
+     * @param j column index
+     * @return list of connected pixels
+     */
+    private static ArrayList<int[]> GetFourNeighborhood(int i, int j){
         ArrayList<int[]> lst = new ArrayList<>(4);
         lst.add(new int[]{i-1,j});
         lst.add(new int[]{i+1,j});
@@ -108,7 +149,13 @@ class HoleFiller {
         return  lst;
     }
 
-    private ArrayList<int[]> GetEightNeighborhood(int i, int j){
+    /**
+     * get the eight connected pixels
+     * @param i row index
+     * @param j column index
+     * @return list of connected pixels
+     */
+    private static ArrayList<int[]> GetEightNeighborhood(int i, int j){
         ArrayList<int[]> lst = new ArrayList<>(8);
         lst.addAll(GetFourNeighborhood(i,j));
         lst.add(new int[]{i-1,j-1});
@@ -116,15 +163,5 @@ class HoleFiller {
         lst.add(new int[]{i+1,j-1});
         lst.add(new int[]{i+1,j+1});
         return lst;
-    }
-    
-    private float RecoverPixel(int[] pixel, ArrayList<int[]> boundary, Mat img){
-        float normalization = 0;
-        float result = 0;
-        for (int[] v: boundary) {
-            result += this.weightFunc.applyAsDouble(pixel,v) * img.get(v[0],v[1])[0];
-            normalization += this.weightFunc.applyAsDouble(pixel,v);
-        }
-        return result/normalization;
     }
 }
