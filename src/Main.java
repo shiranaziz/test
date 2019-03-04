@@ -2,6 +2,8 @@ import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 
+import java.awt.*;
+import java.io.File;
 import java.security.InvalidParameterException;
 import java.util.function.ToDoubleBiFunction;
 
@@ -9,10 +11,34 @@ import static org.opencv.core.CvType.*;
 
 public class Main {
 
+    static final String fixedImgPath = "fixed.png";
+    static final int grayscaleMaxVal = 255;
+    static final int numInputParams = 5;
+
     public static void main(String[] args) {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+
+        if (args.length != numInputParams)
+        {
+            System.out.println("wrong number of input args. should be: " +
+                    "<imagePath> <maskPath> <z> <eps> <pixelConnectivity>");
+            return;
+        }
+
         String originalImagePath = args[0];
+        File originalImageFile = new File(originalImagePath);
+        if (!originalImageFile.exists() || !originalImageFile.isFile())
+        {
+            System.out.println("original image doesn't exist");
+            return;
+        }
         String maskPath = args[1];
+        File maskFile = new File(maskPath);
+        if (!maskFile.exists() || !maskFile.isFile())
+        {
+            System.out.println("mask image doesn't exist");
+            return;
+        }
         int z =  Integer.parseInt(args[2]);
         float epsilon = Float.parseFloat(args[3]);
         HoleFiller.PixelConnectivity connectivity = ParseConnectivity(args[4]);
@@ -20,12 +46,12 @@ public class Main {
         Mat img = Imgcodecs.imread(originalImagePath, Imgcodecs.IMREAD_GRAYSCALE);
         Mat mask = Imgcodecs.imread(maskPath, Imgcodecs.IMREAD_GRAYSCALE);
 
-        Mat fixedImg = HoleFiller.Run(MergeImageAndMask(img, mask),DefaultWeightFunc(z, epsilon), connectivity);
-//        Mat fixedImg = HoleFiller.RunFast(MergeImageAndMask(img, mask));
+//        Mat fixedImg = HoleFiller.Run(MergeImageAndMask(img, mask), DefaultWeightFunc(z, epsilon), connectivity);
+//        Mat fixedImg = HoleFiller.RunFast(MergeImageAndMask(img, mask), DefaultWeightFunc(z, epsilon), connectivity);
+        Mat fixedImg = HoleFiller.RunConv(MergeImageAndMask(img, mask), DefaultWeightFunc(z, epsilon), connectivity);
 
-        Mat temp = new Mat();
-        fixedImg.convertTo(temp,CV_8UC1,255);
-        Imgcodecs.imwrite("fixed.png",temp);
+        fixedImg.convertTo(fixedImg, CV_8UC1, grayscaleMaxVal);
+        Imgcodecs.imwrite(fixedImgPath,fixedImg);
         System.out.println("Finished");
     }
 
@@ -54,7 +80,7 @@ public class Main {
      */
     static private Mat MergeImageAndMask(Mat img, Mat mask){
         Mat imgWithHole = new Mat();
-        img.convertTo(imgWithHole, CV_32F, 1.0/255);
+        img.convertTo(imgWithHole, CV_32F, 1.0/grayscaleMaxVal);
         for (int i=0; i<img.rows(); i++){
             for (int j=0; j<img.cols(); j++){
                 if (mask.get(i,j) [0] == 0){
@@ -71,9 +97,9 @@ public class Main {
      * @param epsilon
      * @return default weight function
      */
-    private static ToDoubleBiFunction<int [], int[]> DefaultWeightFunc(int z , float epsilon){
-        return (x,y) -> {
-            double norm = Math.sqrt(Math.pow(x[0]-y[0],2) + Math.pow(x[1]-y[1],2));
+    private static ToDoubleBiFunction<Point, Point> DefaultWeightFunc(int z , float epsilon){
+        return (u,v) -> {
+            double norm = Math.sqrt(Math.pow(u.x-v.x,2) + Math.pow(u.y-v.y,2));
             return (1/(Math.pow(norm,z)+ epsilon));
         };
     }
