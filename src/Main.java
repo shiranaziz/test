@@ -14,6 +14,11 @@ public class Main {
     static final String fixedImgPath = "fixed.png";
     static final int grayscaleMaxVal = 255;
     static final int numInputParams = 5;
+    static final int imagePathNumArg = 0;
+    static final int maskPathNumArg = 1;
+    static final int normNumArg = 2;
+    static final int epsilonNumArg = 3;
+    static final int connectivityTypeNumArg = 4;
 
     public static void main(String[] args) {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -25,23 +30,23 @@ public class Main {
             return;
         }
 
-        String originalImagePath = args[0];
+        String originalImagePath = args[imagePathNumArg];
         File originalImageFile = new File(originalImagePath);
         if (!originalImageFile.exists() || !originalImageFile.isFile())
         {
             System.out.println("original image doesn't exist");
             return;
         }
-        String maskPath = args[1];
+        String maskPath = args[maskPathNumArg];
         File maskFile = new File(maskPath);
         if (!maskFile.exists() || !maskFile.isFile())
         {
             System.out.println("mask image doesn't exist");
             return;
         }
-        int z =  Integer.parseInt(args[2]);
-        float epsilon = Float.parseFloat(args[3]);
-        HoleFiller.PixelConnectivity connectivity = ParseConnectivity(args[4]);
+        int z =  Integer.parseInt(args[normNumArg]);
+        float epsilon = Float.parseFloat(args[epsilonNumArg]);
+        HoleFiller.PixelConnectivity connectivity = ParseConnectivity(args[connectivityTypeNumArg]);
 
         Mat img = Imgcodecs.imread(originalImagePath, Imgcodecs.IMREAD_GRAYSCALE);
         Mat mask = Imgcodecs.imread(maskPath, Imgcodecs.IMREAD_GRAYSCALE);

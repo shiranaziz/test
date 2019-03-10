@@ -27,21 +27,13 @@ class HoleFiller {
      * @return matrix representing a restored image (filled hole)
      */
     static Mat Run(Mat img, ToDoubleBiFunction<Point, Point> weightFunc, PixelConnectivity connectivity) {
-        ArrayList<Point> boundary = FindBoundary(img, connectivity);
         ArrayList<Point> hole = FindHole(img);
+        ArrayList<Point> boundary = FindBoundary(connectivity, hole);
         Mat restoredImg = new Mat();
         img.copyTo(restoredImg);
         for (Point p : hole) {
             restoredImg.put(p.x, p.y, RecoverPixel(p, boundary, img, weightFunc));
         }
-//        Mat restoredImg = new Mat(img.size(),img.type());
-        //TODO: does this count as runtime? maybe find hole first and run on it?
-//        for (int i = 0; i < img.rows(); i++) {
-//            for (int j = 0; j < img.cols(); j++) {
-//                double curVal = img.get(i, j)[0];
-//                restoredImg.put(i, j, curVal == -1 ? RecoverPixel(new Point(i, j), boundary, img, weightFunc) : curVal);
-//            }
-//        }
         return restoredImg;
     }
 
@@ -55,8 +47,9 @@ class HoleFiller {
      * @return matrix representing a restored image (filled hole)
      */
     static Mat RunFast(Mat img, ToDoubleBiFunction<Point, Point> weightFunc, PixelConnectivity connectivity) {
-        ArrayList<Point> boundary = FindBoundary(img, connectivity);
+
         ArrayList<Point> hole = FindHole(img);
+        ArrayList<Point> boundary = FindBoundary(connectivity, hole);
 
         ArrayList<Point> boundarySubset = new ArrayList<>();
         Random rand = new Random();
@@ -71,16 +64,6 @@ class HoleFiller {
         for (Point p : hole) {
             restoredImg.put(p.x, p.y, RecoverPixel(p, boundarySubset, img, weightFunc));
         }
-
-//        Mat restoredImg = new Mat(img.size(), img.type());
-//        for (int i = 0; i < img.rows(); i++) {
-//            for (int j = 0; j < img.cols(); j++) {
-//                double curVal = img.get(i, j)[0];
-//                restoredImg.put(i, j, curVal == -1 ?
-//                        RecoverPixel(new Point(i, j), boundarySubset, img, weightFunc) : curVal);
-//            }
-//        }
-
         return restoredImg;
     }
 
@@ -93,10 +76,9 @@ class HoleFiller {
      * @return matrix representing a restored image (filled hole)
      */
     static Mat RunConv(Mat img, ToDoubleBiFunction<Point, Point> weightFunc, PixelConnectivity connectivity) {
-        ArrayList<Point> boundary = FindBoundary(img, connectivity);
         ArrayList<Point> hole = FindHole(img);
+        ArrayList<Point> boundary = FindBoundary(connectivity, hole);
         Point center = CenterOfMass(boundary);
-        //TODO: estimate the inscribing square
         int cropFaceLength = boundary.size() / 2;
         Point upperLeft = new Point(center.x - cropFaceLength / 2, center.y - cropFaceLength / 2);
 
@@ -110,17 +92,6 @@ class HoleFiller {
         }
 
         Mat kernel = BuildKernel(weightFunc, cropFaceLength);
-
-//        Mat temp = new Mat();
-//        double maxKernel = Core.norm(kernel,Core.NORM_INF);
-//        System.out.println(String.format("max kernel %f",maxKernel));
-//        kernel.convertTo(temp,CV_8UC1,255/maxKernel);
-//        Imgcodecs.imwrite("kernel.png",temp);
-//
-//        double maxBoundary = Core.norm(boundaryMat,Core.NORM_INF);
-//        System.out.println(String.format("max boundary %f", maxBoundary));
-//        boundaryMat.convertTo(temp,CV_8UC1,255/maxBoundary);
-//        Imgcodecs.imwrite("boundary.png",temp);
 
         Mat convMat = new Mat();
         Imgproc.filter2D(boundaryMat, convMat, -1, kernel);
@@ -153,7 +124,6 @@ class HoleFiller {
             center.translate(p.x, p.y);
         }
         center.setLocation(center.x/numPoints, center.y/numPoints);
-        System.out.println(String.format("hole center (%d,%d)",center.x,center.y));
         return center;
     }
 
@@ -196,22 +166,18 @@ class HoleFiller {
 
     /**
      * find the boundary of the hole
-     * @param img image with hole
+     * @param hole the hole we found at the original image
      * @param connectivity pixel connectivity
      * @return a list of boundary pixels
      */
-    private static ArrayList<Point> FindBoundary(Mat img, PixelConnectivity connectivity) {
+    private static ArrayList<Point> FindBoundary(PixelConnectivity connectivity, ArrayList<Point> hole) {
         HashSet<Point> boundary = new HashSet<>();
-        for (int i = 0; i < img.rows(); i++) {
-            for (int j = 0; j < img.cols(); j++) {
-                if (img.get(i, j)[0] == -1) {
-                    ArrayList<Point> connected = connectivity == PixelConnectivity.FOUR ?
-                            GetFourNeighborhood(i,j) : GetEightNeighborhood(i,j);
-                    connected.removeIf(p->img.get(p.x, p.y)[0] == -1);
-                    boundary.addAll(connected);
-                }
-            }
+        for (Point point: hole) {
+            ArrayList<Point> connected = connectivity == PixelConnectivity.FOUR ?
+                    GetFourNeighborhood(point) : GetEightNeighborhood(point);
+            boundary.addAll(connected);
         }
+        boundary.removeAll(hole);
         System.out.println(String.format("m = %d",boundary.size()));
         return new ArrayList<>(boundary);
     }
@@ -238,32 +204,30 @@ class HoleFiller {
 
     /**
      * get the four connected pixels
-     * @param i row index
-     * @param j column index
+     * @param p index point
      * @return list of connected pixels
      */
-    private static ArrayList<Point> GetFourNeighborhood(int i, int j){
+    private static ArrayList<Point> GetFourNeighborhood(Point p){
         ArrayList<Point> lst = new ArrayList<>(4);
-        lst.add(new Point(i-1, j));
-        lst.add(new Point(i+1, j));
-        lst.add(new Point(i, j-1));
-        lst.add(new Point(i, j+1));
+        lst.add(new Point(p.x - 1, p.y));
+        lst.add(new Point(p.x + 1, p.y));
+        lst.add(new Point(p.x, p.y - 1));
+        lst.add(new Point(p.x, p.y + 1));
         return  lst;
     }
 
     /**
      * get the eight connected pixels
-     * @param i row index
-     * @param j column index
+     * @param p index point
      * @return list of connected pixels
      */
-    private static ArrayList<Point> GetEightNeighborhood(int i, int j){
+    private static ArrayList<Point> GetEightNeighborhood(Point p){
         ArrayList<Point> lst = new ArrayList<>(8);
-        lst.addAll(GetFourNeighborhood(i, j));
-        lst.add(new Point(i-1, j-1));
-        lst.add(new Point(i-1, j+1));
-        lst.add(new Point(i+1, j-1));
-        lst.add(new Point(i+1, j+1));
+        lst.addAll(GetFourNeighborhood(p));
+        lst.add(new Point(p.x - 1, p.y - 1));
+        lst.add(new Point(p.x - 1, p.y + 1));
+        lst.add(new Point(p.x + 1, p.y - 1));
+        lst.add(new Point(p.x + 1, p.y + 1));
         return lst;
     }
 }
